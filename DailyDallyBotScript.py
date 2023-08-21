@@ -69,38 +69,56 @@ async def fetch_all_bdays(update: Update, context: ContextTypes.DEFAULT_TYPE):
         str_date = bday[0].strftime("%d/%m/%Y")
         res2 += "{}'s birthday is on {}.\n".format(res[x], str_date)
         x +=1
+
+    cursor.reset()
     await context.bot.send_message(chat_id=update.effective_chat.id, text="{}".format(res2))
 
 
 async def add_bday(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    try:
-        input_list = update.message.text.split(" ")
-        if len(input_list) != 3:
-            await context.bot.send_message(chat_id=update.effective_chat.id, text="Usage of addBday: /addBday [name (one word, no space)] [birthday (YYYY-MM-DD)]")
-            return
-        
-        name = input_list[1]
-        date = input_list[2]
-        
-        date_list = date.split("-")
-        # print(date_list)
-        # date validation (still prone to errors)
-        # if not ((date_list[0]>1000 and date_list[0]<3000) or (date_list[1]>0 and date_list[1]<13) or (date_list[2]>0 and date_list[2]<32)):
-        #     await context.bot.send_message(chat_id=update.effective_chat.id, text="Usage of addBday: /addBday [name (one word, no space)] [birthday (YYYY-MM-DD)]")
-        #     return
-
-        cursor.execute("USE dailydally")
-        cursor.execute("INSERT INTO bday (name, birth) VALUES ('{}', '{}');".format(name, date))
-        mydb.commit() #don't forget this!
-
-        cursor.execute("SELECT * FROM bday")
-
-        await context.bot.send_message(chat_id=update.effective_chat.id, text="Added {}'s birthday on {}!".format(name, date))
+    # try:
+    input_list = update.message.text.split(" ")
+    if len(input_list) != 3:
+        await context.bot.send_message(chat_id=update.effective_chat.id, text="Usage of addBday: /addBday [name (one word, no space)] [birthday (YYYY-MM-DD)]")
+        return
     
-    except Exception as e:
-        await context.bot.send_message(chat_id=update.effective_chat.id, text="Oops, something went wrong. Check that your usage of the command is correct. Usage of addBday: /addBday [name (one word, no space)] [birthday (YYYY-MM-DD)]")
+    name = input_list[1]
+    date = input_list[2]
+    user_id = update.message.chat_id
+    # print("user id: ", user_id)
+
+    cursor.execute("USE dailydally")
+    cursor.execute("INSERT INTO bday (name, birth, uid) VALUES ('{}', '{}', {});".format(name, date, user_id))
+    mydb.commit() # don't forget this!
+    cursor.reset() # reset cursor
+    await context.bot.send_message(chat_id=update.effective_chat.id, text="Added {}'s birthday on {}!".format(name, date))
+    
+    # except Exception as e:
+        # await context.bot.send_message(chat_id=update.effective_chat.id, text="Oops, something went wrong. Check that your usage of the command is correct. \nUsage of addBday: /addBday [name (one word, no space)] [birthday (YYYY-MM-DD)]")
 
 
+async def delete_bday(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    input_list = update.message.text.split(" ")
+    if len(input_list) != 2:
+        await context.bot.send_message(chat_id=update.effective_chat.id, text="Usage of addBday: /getBday [name (one word, no space)]")
+        return
+    
+    name = input_list[1]
+    print(name)
+
+    cursor.execute("USE dailydally")
+    cursor.execute("DELETE FROM bday WHERE name='{}';".format(name))
+    mydb.commit()
+    cursor.reset()
+    await context.bot.send_message(chat_id=update.effective_chat.id, text="Deleted successfully.")
+
+# delete all bdays
+async def delete_all_bdays(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    cursor.execute("USE dailydally")
+    cursor.execute("DELETE FROM bday")
+    mydb.commit()
+    cursor.reset()
+    await context.bot.send_message(chat_id=update.effective_chat.id, text="Deleted all records successfully.")
+    
 
 
 ########### MAIN #############
@@ -112,6 +130,8 @@ if __name__ == '__main__':
     application.add_handler(CommandHandler('help', help))
     application.add_handler(CommandHandler("addBday", add_bday))
     application.add_handler(CommandHandler('getAllBdays', fetch_all_bdays))
+    application.add_handler(CommandHandler('deleteBday', delete_bday))
+    application.add_handler(CommandHandler('deleteAllBdays', delete_all_bdays))
     application.add_handler(InlineQueryHandler(inline_caps))
 
 
