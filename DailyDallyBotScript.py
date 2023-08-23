@@ -43,7 +43,7 @@ async def inline_caps(update: Update, context: ContextTypes.DEFAULT_TYPE):
 # /start
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await context.bot.send_message(chat_id=update.effective_chat.id, text="""
-    Welcome to DillyDally Bot! List of commands:
+    Welcome to DailyDally Bot! List of commands:
                                 
     /addBday [name] [YYYY-MM-DD]: Add a name and birthday.
     /getBday [name] Gets someone's birthday.
@@ -99,24 +99,24 @@ async def fetch_all_bdays(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 async def add_bday(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    # try:
-    input_list = update.message.text.split(" ")
-    if len(input_list) != 3:
-        await context.bot.send_message(chat_id=update.effective_chat.id, text="Usage of addBday: /addBday [name (one word, no space)] [birthday (YYYY-MM-DD)]")
-        return
-    
-    name = input_list[1]
-    date = input_list[2]
-    user_id = update.message.chat_id
+    try:
+        input_list = update.message.text.split(" ")
+        if len(input_list) != 3:
+            await context.bot.send_message(chat_id=update.effective_chat.id, text="Usage of addBday: /addBday [name (one word, no space)] [birthday (YYYY-MM-DD)]")
+            return
+        
+        name = input_list[1]
+        date = input_list[2]
+        user_id = update.message.chat_id
 
-    cursor.execute("USE dailydally")
-    cursor.execute("INSERT INTO bday (name, birth, uid) VALUES ('{}', '{}', {});".format(name, date, user_id))
-    mydb.commit() # don't forget this!
-    cursor.reset() # reset cursor
-    await context.bot.send_message(chat_id=update.effective_chat.id, text="Added {}'s birthday on {}!".format(name, date))
+        cursor.execute("USE dailydally")
+        cursor.execute("INSERT INTO bday (name, birth, uid) VALUES ('{}', '{}', {});".format(name, date, user_id))
+        mydb.commit() # don't forget this!
+        cursor.reset() # reset cursor
+        await context.bot.send_message(chat_id=update.effective_chat.id, text="Added {}'s birthday on {}!".format(name, date))
     
-    # except Exception as e:
-        # await context.bot.send_message(chat_id=update.effective_chat.id, text="Oops, something went wrong. Check that your usage of the command is correct. \nUsage of addBday: /addBday [name (one word, no space)] [birthday (YYYY-MM-DD)]")
+    except Exception as e:
+        await context.bot.send_message(chat_id=update.effective_chat.id, text="Oops, something went wrong. Check that your usage of the command is correct. \nUsage of addBday: /addBday [name (one word, no space)] [birthday (YYYY-MM-DD)]")
 
 
 async def get_bday(update: Update, context: ContextTypes.DEFAULT_TYPE):
