@@ -6,10 +6,23 @@ from telegram.ext import InlineQueryHandler, filters
 import mysql.connector
 
 ### creating connection object ###
+# mydb = mysql.connector.connect(
+#     host = "localhost",
+#     user = "root",
+#     password = "ElSet7501:)"
+# )
+
+HOST = "sql6.freemysqlhosting.net"
+USER = "sql6641882"
+PASSWORD = "7WcdwzAA5f"
+PORT = "3306"
+DB_NAME = "sql6641882"
+
 mydb = mysql.connector.connect(
-    host = "localhost",
-    user = "root",
-    password = "ElSet7501:)"
+    host = HOST,
+    user = USER,
+    password = PASSWORD,
+    port = PORT
 )
 
 ### creating mySQL cursor ###
@@ -72,7 +85,7 @@ async def help(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def fetch_all_bdays(update: Update, context: ContextTypes.DEFAULT_TYPE):
     res = []
     res2 = ""
-    cursor.execute("USE dailydally")
+    cursor.execute("USE {}".format(DB_NAME))
     user_id = update.message.chat_id
 
     # get name
@@ -109,7 +122,7 @@ async def add_bday(update: Update, context: ContextTypes.DEFAULT_TYPE):
         date = input_list[2]
         user_id = update.message.chat_id
 
-        cursor.execute("USE dailydally")
+        cursor.execute("USE {}".format(DB_NAME))
         cursor.execute("INSERT INTO bday (name, birth, uid) VALUES ('{}', '{}', {});".format(name, date, user_id))
         mydb.commit() # don't forget this!
         cursor.reset() # reset cursor
@@ -129,7 +142,7 @@ async def get_bday(update: Update, context: ContextTypes.DEFAULT_TYPE):
     name = input_list[1]
     user_id = update.message.chat_id
 
-    cursor.execute("USE dailydally")
+    cursor.execute("USE {}".format(DB_NAME))
     cursor.execute("SELECT birth FROM bday WHERE uid='{}' AND name='{}';".format(user_id, name))
     
     res = cursor.fetchone()
@@ -153,7 +166,7 @@ async def delete_bday(update: Update, context: ContextTypes.DEFAULT_TYPE):
     
     name = input_list[1]
 
-    cursor.execute("USE dailydally")
+    cursor.execute("USE {}".format(DB_NAME))
     cursor.execute("DELETE FROM bday WHERE name='{}';".format(name))
     mydb.commit()
     cursor.reset()
@@ -182,7 +195,7 @@ async def delete_all_bdays_response(update: Update, context: ContextTypes.DEFAUL
 
     if input == "Delete":
         print("in delete all bdays")
-        cursor.execute("USE dailydally")
+        cursor.execute("USE {}".format(DB_NAME))
         cursor.execute("DELETE FROM bday")
         mydb.commit()
         cursor.reset()
