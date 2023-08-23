@@ -6,14 +6,23 @@ from telegram.ext import InlineQueryHandler, filters
 import mysql.connector
 
 ### creating connection object ###
+# mydb = mysql.connector.connect(
+#     host = "sql6.freemysqlhosting.net",
+#     user = "sql6641882",
+#     password = "7WcdwzAA5f",
+#     port = "3306"
+# )
+
 mydb = mysql.connector.connect(
-    host = "sql6.freemysqlhosting.net",
-    user = "sql6641882",
+    host = "elseti.mysql.pythonanywhere-services.com",
+    user = "elseti",
     password = "7WcdwzAA5f",
     port = "3306"
 )
 
-db_name = "sql6641882"
+# db_name = "sql6641882"
+db_name = "elseti$default"
+
 ### creating mySQL cursor ###
 cursor = mydb.cursor()
 
