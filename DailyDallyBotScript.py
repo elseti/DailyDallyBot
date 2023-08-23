@@ -1,10 +1,9 @@
 import logging
-from telegram import Update
-from telegram.ext import ApplicationBuilder, ContextTypes, CommandHandler, MessageHandler
+from telegram import Update, ReplyKeyboardMarkup, ReplyKeyboardRemove
+from telegram.ext import ApplicationBuilder, ContextTypes, CommandHandler, MessageHandler, ConversationHandler
 from telegram import InlineQueryResultArticle, InputTextMessageContent
 from telegram.ext import InlineQueryHandler, filters
 import mysql.connector
-import datetime
 
 ### creating connection object ###
 mydb = mysql.connector.connect(
@@ -13,10 +12,10 @@ mydb = mysql.connector.connect(
     password = "ElSet7501:)"
 )
 
-print(mydb)
-
 ### creating mySQL cursor ###
 cursor = mydb.cursor()
+
+reply = ""
 
 logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
@@ -43,11 +42,29 @@ async def inline_caps(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 # /start
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await context.bot.send_message(chat_id=update.effective_chat.id, text="I'm a bot, please talk to me!")
+    await context.bot.send_message(chat_id=update.effective_chat.id, text="""
+    Welcome to DillyDally Bot! List of commands:
+                                
+    /addBday [name] [YYYY-MM-DD]: Add a name and birthday.
+    /getBday [name] Gets someone's birthday.
+    /getAllBdays: Fetches all birthdays stored.
+    /deleteAllBdays: Deletes all birthdays.
+    /deleteBday [name]: Delete someone's birthday.
+
+    """)
 
 # /help
 async def help(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await context.bot.send_message(chat_id=update.effective_chat.id, text="Please help yourself.")
+    await context.bot.send_message(chat_id=update.effective_chat.id, text= """
+    List of commands:
+                                
+    /addBday [name] [YYYY-MM-DD]: Add a name and birthday.
+    /getBday [name] Gets someone's birthday.
+    /getAllBdays: Fetches all birthdays stored.
+    /deleteAllBdays: Deletes all birthdays.
+    /deleteBday [name]: Delete someone's birthday.
+
+    """)
 
 
 
@@ -56,14 +73,21 @@ async def fetch_all_bdays(update: Update, context: ContextTypes.DEFAULT_TYPE):
     res = []
     res2 = ""
     cursor.execute("USE dailydally")
+    user_id = update.message.chat_id
 
     # get name
-    cursor.execute("SELECT name FROM bday")
+    cursor.execute("SELECT name FROM bday WHERE uid='{}'".format(user_id))        
+
     for name in cursor:
         res.append("".join(name))
+    
+    if len(res)==0:
+        cursor.reset()
+        await context.bot.send_message(chat_id=update.effective_chat.id, text="No records found.")
+        return
 
     # get birthday date
-    cursor.execute("SELECT birth FROM bday")
+    cursor.execute("SELECT birth FROM bday WHERE uid='{}'".format(user_id))
     x = 0
     for bday in cursor:
         str_date = bday[0].strftime("%d/%m/%Y")
@@ -84,7 +108,6 @@ async def add_bday(update: Update, context: ContextTypes.DEFAULT_TYPE):
     name = input_list[1]
     date = input_list[2]
     user_id = update.message.chat_id
-    # print("user id: ", user_id)
 
     cursor.execute("USE dailydally")
     cursor.execute("INSERT INTO bday (name, birth, uid) VALUES ('{}', '{}', {});".format(name, date, user_id))
@@ -96,14 +119,39 @@ async def add_bday(update: Update, context: ContextTypes.DEFAULT_TYPE):
         # await context.bot.send_message(chat_id=update.effective_chat.id, text="Oops, something went wrong. Check that your usage of the command is correct. \nUsage of addBday: /addBday [name (one word, no space)] [birthday (YYYY-MM-DD)]")
 
 
-async def delete_bday(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def get_bday(update: Update, context: ContextTypes.DEFAULT_TYPE):
     input_list = update.message.text.split(" ")
     if len(input_list) != 2:
         await context.bot.send_message(chat_id=update.effective_chat.id, text="Usage of addBday: /getBday [name (one word, no space)]")
         return
     
+    res = ""
     name = input_list[1]
-    print(name)
+    user_id = update.message.chat_id
+
+    cursor.execute("USE dailydally")
+    cursor.execute("SELECT birth FROM bday WHERE uid='{}' AND name='{}';".format(user_id, name))
+    
+    res = cursor.fetchone()
+    
+    if res == None:
+        await context.bot.send_message(chat_id=update.effective_chat.id, text="No record found for {}".format(name))
+        return
+    
+    res = res[0].strftime("%d/%m/%Y")
+   
+    cursor.reset()
+    await context.bot.send_message(chat_id=update.effective_chat.id, text="{}'s birthday is on {}.".format(name, res))
+
+
+# delete bday
+async def delete_bday(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    input_list = update.message.text.split(" ")
+    if len(input_list) != 2:
+        await context.bot.send_message(chat_id=update.effective_chat.id, text="Usage of addBday: /deleteBday [name (one word, no space)]")
+        return
+    
+    name = input_list[1]
 
     cursor.execute("USE dailydally")
     cursor.execute("DELETE FROM bday WHERE name='{}';".format(name))
@@ -111,15 +159,51 @@ async def delete_bday(update: Update, context: ContextTypes.DEFAULT_TYPE):
     cursor.reset()
     await context.bot.send_message(chat_id=update.effective_chat.id, text="Deleted successfully.")
 
-# delete all bdays
-async def delete_all_bdays(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    cursor.execute("USE dailydally")
-    cursor.execute("DELETE FROM bday")
-    mydb.commit()
-    cursor.reset()
-    await context.bot.send_message(chat_id=update.effective_chat.id, text="Deleted all records successfully.")
-    
 
+
+# confirmation for deleting all bdays
+async def delete_all_bdays_confirmation(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+
+    reply_keyboard = [["Delete", "Cancel"]]
+    await update.message.reply_text(
+        text= "Are you sure you want to delete all records?",
+        reply_markup = ReplyKeyboardMarkup(
+            keyboard=reply_keyboard, one_time_keyboard=True, input_field_placeholder="Confirm deletion?"
+        ),
+    )
+
+    return 1
+
+    
+async def delete_all_bdays_response(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await update.message.reply_text("Okay.")
+    input = update.message.text
+    print(input)
+
+    if input == "Delete":
+        print("in delete all bdays")
+        cursor.execute("USE dailydally")
+        cursor.execute("DELETE FROM bday")
+        mydb.commit()
+        cursor.reset()
+        await context.bot.send_message(chat_id=update.effective_chat.id, text="Deleted all records successfully.")
+    
+    elif input == "Cancel":
+        print("cancelled")
+        cursor.reset()
+        await context.bot.send_message(chat_id=update.effective_chat.id, text="Operation cancelled.")
+    
+    return ConversationHandler.END # don't forget to put this to end it
+
+
+#### conversation handler for deleteAllBDays ####
+conv_handler = ConversationHandler(
+    entry_points=[CommandHandler('deleteAllBdays', delete_all_bdays_confirmation)],
+    states={
+        1: [MessageHandler(filters.TEXT & ~filters.COMMAND, delete_all_bdays_response)],
+    },
+    fallbacks=[CommandHandler("start", start)]
+)
 
 ########### MAIN #############
 
@@ -128,11 +212,13 @@ if __name__ == '__main__':
 
     application.add_handler(CommandHandler('start', start))
     application.add_handler(CommandHandler('help', help))
-    application.add_handler(CommandHandler("addBday", add_bday))
+    application.add_handler(CommandHandler('addBday', add_bday))
     application.add_handler(CommandHandler('getAllBdays', fetch_all_bdays))
     application.add_handler(CommandHandler('deleteBday', delete_bday))
-    application.add_handler(CommandHandler('deleteAllBdays', delete_all_bdays))
+    application.add_handler(CommandHandler('getBday', get_bday))
     application.add_handler(InlineQueryHandler(inline_caps))
+
+    application.add_handler(conv_handler)
 
 
     application.run_polling()
